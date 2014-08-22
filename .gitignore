@@ -7,3 +7,15 @@ ns_project
 
 NetSec.xcodeproj/*
 ipod_casa
+
+*.xcuserstate
+
+*.1
+
+NetSec/passphrase2PSK.h
+
+NetSec/PRF.h
+
+NetSec/sta_data.h
+
+NetSec/wpa_Induction.pcap
