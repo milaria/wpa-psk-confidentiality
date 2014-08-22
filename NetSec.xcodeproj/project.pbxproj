@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		6342E52F165A905C00BD59BB /* NetSec.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 6342E52E165A905C00BD59BB /* NetSec.1 */; };
 		63BF07EA1665102300996B6C /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 6342E52C165A905C00BD59BB /* main.c */; };
+		63D8386519A79B2600D5EC45 /* enc_functions.c in Sources */ = {isa = PBXBuildFile; fileRef = 63D8386419A79B2600D5EC45 /* enc_functions.c */; };
+		63D8386919A79B9D00D5EC45 /* util_functions.c in Sources */ = {isa = PBXBuildFile; fileRef = 63D8386819A79B9D00D5EC45 /* util_functions.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,9 +30,12 @@
 		6342E528165A905C00BD59BB /* NetSec */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = NetSec; sourceTree = BUILT_PRODUCTS_DIR; };
 		6342E52C165A905C00BD59BB /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		6342E52E165A905C00BD59BB /* NetSec.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = NetSec.1; sourceTree = "<group>"; };
-		63466B311675F69800020680 /* passphrase2PSK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = passphrase2PSK.h; sourceTree = "<group>"; };
 		63A9B01816D3639F00C53983 /* PRF.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PRF.h; sourceTree = "<group>"; };
 		63B60AD516CE47260073288C /* sta_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sta_data.h; sourceTree = "<group>"; };
+		63D8386419A79B2600D5EC45 /* enc_functions.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = enc_functions.c; sourceTree = "<group>"; };
+		63D8386619A79B4200D5EC45 /* enc_functions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = enc_functions.h; sourceTree = "<group>"; };
+		63D8386719A79B9400D5EC45 /* util_functions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = util_functions.h; sourceTree = "<group>"; };
+		63D8386819A79B9D00D5EC45 /* util_functions.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = util_functions.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,10 +69,13 @@
 			isa = PBXGroup;
 			children = (
 				6342E52C165A905C00BD59BB /* main.c */,
+				63D8386719A79B9400D5EC45 /* util_functions.h */,
+				63D8386819A79B9D00D5EC45 /* util_functions.c */,
+				63D8386419A79B2600D5EC45 /* enc_functions.c */,
+				63D8386619A79B4200D5EC45 /* enc_functions.h */,
 				63A9B01816D3639F00C53983 /* PRF.h */,
 				63B60AD516CE47260073288C /* sta_data.h */,
 				6342E52E165A905C00BD59BB /* NetSec.1 */,
-				63466B311675F69800020680 /* passphrase2PSK.h */,
 			);
 			path = NetSec;
 			sourceTree = "<group>";
@@ -123,6 +131,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				63D8386919A79B9D00D5EC45 /* util_functions.c in Sources */,
+				63D8386519A79B2600D5EC45 /* enc_functions.c in Sources */,
 				63BF07EA1665102300996B6C /* main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -18,6 +18,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <unistd.h>
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -26,21 +28,12 @@
 #include <arpa/inet.h>
 #include <openssl/hmac.h>
 
-#include "passphrase2PSK.h"
-#include "PRF.h"
+#include "util_functions.h"
+#include "enc_functions.h"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
-
-typedef struct handshake_data{
-    u_char supplicant[6];
-    u_char authenticator[6];
-    u_char ANonce[32]; //32byte
-    u_char SNonce[32]; //32byte
-    u_char IV[16];
-    u_char PTK[32];
-    int state;//1 if finished
-}Handshake_data, * Phandshake_data;
+#define VERBOSE 0
 
 typedef enum{
     MESSAGE_1,
@@ -49,10 +42,9 @@ typedef enum{
     MESSAGE_4
 }eapolKeyType;
 
-#define MAX_NUM_STA 10
-Phandshake_data sta_data[MAX_NUM_STA];
+extern Phandshake_data sta_data[MAX_NUM_STA];
 int num_sta=0;
-u_char * PSK;
+extern u_char * PSK;
 
 void got_packet_radiotap(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
 void open_ieee_packet(const u_char *ieee_packet);
@@ -64,18 +56,10 @@ int new_sta(u_char *address_1);
 eapolKeyType classify_eapol_key(int secure, int key_MIC, int key_ack, int install, int key_type);
 int get_index(u_char *sta_address);
 void print_exString(u_char * str, int len);
-void generate_ptk(int sta_index);
 
 
 
 int main(int argc, char **argv){
-    unsigned char * output1 = (unsigned char *)malloc(80*sizeof(char));
-    PRF("Jefe", 4, "prefix", 6, "what do ya want for nothing?", 28, output1, 80);
-    
-    print_exString(output1, 80);
-    
-    exit(EXIT_SUCCESS);
-    
     char* Passphrase;
     u_char* SSID;
     int SSIDLength;
@@ -85,6 +69,50 @@ int main(int argc, char **argv){
 	pcap_t *handle;				/* packet capture handle */
     char* fname;
     
+    //options handling
+    int c;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "s:p:f:")) != -1){
+        switch (c) {
+            case 's':
+                SSID = (u_char *) optarg;
+                break;
+            case 'p':
+                Passphrase = optarg;
+                break;
+            case 'f':
+                fname = optarg;
+                break;
+            case '?':
+                if (isprint (optopt))
+             		fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            	else
+               		fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
+                return(EXIT_FAILURE);
+            default:
+                abort();
+        }
+    }
+    
+    if (fname == NULL || SSID == NULL || Passphrase == NULL) {
+        fprintf (stderr, "Missing some information, unable to continue\n");
+        printf("Usage is:\n\t ns_project -f <file name> -s <SSID> -p <passphrase>\n");
+        return(EXIT_FAILURE);
+    }
+
+    printf("Reading from file: \"%s\"\n", fname);
+    printf("SSID = \"%s\"\n", SSID);
+    printf("Passphrase = \"%s\"\n", Passphrase);
+    
+    /*
+     unsigned char * output1 = (unsigned char *)malloc(80*(int)sizeof(char));
+     PRF((unsigned char *)"Jefe", 4, (unsigned char *)"prefix", 6, (unsigned char *)"what do ya want for nothing?", 28, output1, 80);
+     
+     print_exString(output1, 80);*/
+    
+    
+    
+    /*
 	if (argc == 4) {
 		fname = argv[1];
         SSID = (u_char *) argv[2];
@@ -98,17 +126,21 @@ int main(int argc, char **argv){
 	else {
 		fprintf(stderr, "error: unrecognized command-line options\n\n");
 		exit(EXIT_FAILURE);
-	}
+	}*/
     
-    SSIDLength = strlen(SSID);
+    SSIDLength = (int)strlen((char *)SSID);
     u_char * output = (u_char *) malloc(40);
+    PSK = (u_char *) malloc(32*sizeof(u_char));
+    
     PasswordHash(Passphrase, SSID, SSIDLength, output);
     memcpy(PSK, output, 32*sizeof(u_char));
     
+#if VERBOSE
     printf("PSK: ");
     print_exString(PSK, 32);
     printf("\n");
-    
+#endif
+
 	/* open file */
     handle = pcap_open_offline(fname, errbuf);
     
@@ -127,7 +159,11 @@ int main(int argc, char **argv){
 
 void got_packet_radiotap(u_char *args, const struct pcap_pkthdr *header, const u_char *packet){
     static int count = 1;
+#if VERBOSE
     printf("\nPacket number %d, length: %d\n", count, header->len);
+#else
+    printf("\n[%d]", count);
+#endif
     
     
     u_char header_revision = (u_char)packet[0];
@@ -196,12 +232,14 @@ void open_ieee_packet(const u_char *ieee_packet){
     }//da controllare
     
     if(type==2 & subtype==0){//data type
-        if(!protected)
-        {
+        if(!protected) {
             //Address 1 always holds the receiver address of the intended receiver (or, in the case of multicast frames, receivers)
             //Address 2 always holds the address of the STA that is transmitting the frame.
             const u_char * llc_packet = ieee_packet+mac_frame_header_length;
             open_llc_packet(llc_packet,address_1,address_2,address_3);
+        }
+        else{
+            
         }
     }
     
@@ -264,7 +302,7 @@ void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u
         
         switch (classify_eapol_key(secure,key_MIC,key_ack,install,key_type)) {
             case MESSAGE_1:
-                printf("message 1");
+                printf("EAPOL KEY message 1");
                 //allocation of stations data
                 if(num_sta == 0){
                     sta_data[0] = (Phandshake_data) malloc(sizeof(Handshake_data));
@@ -283,7 +321,7 @@ void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u
                 sta_data[index]->state = 0;
                 break;
             case MESSAGE_2:
-                printf("message 2");
+                printf("EAPOL KEY message 2");
                 index = get_index(address_2);
                 if(index >= 0){
                     memcpy(sta_data[index]->SNonce, key_nonce, 32 * sizeof(u_char));
@@ -292,12 +330,12 @@ void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u
                 }
                 break;
             case MESSAGE_3:
-                printf("message 3");
+                printf("EAPOL KEY message 3");
                 index = get_index(address_1);
                 //control the MIC?
                 break;
             case MESSAGE_4:
-                printf("message 4");
+                printf("EAPOL KEY message 4");
                 index = get_index(address_2);
                 sta_data[index]->state = 1;
                 //control the MIC?
@@ -342,15 +380,7 @@ eapolKeyType classify_eapol_key(int secure, int key_MIC, int key_ack, int instal
 }
 
 
-void print_exString(u_char * str, int len){
-    int i;
-    for (i = 0; i < len; i++) {
-        if(i%8 == 0) printf(" ");
-        if(i%32 == 0) printf("\n");
-        printf("%02x",str[i]);
-    }
-    printf("\n");
-}
+
 
 int new_sta(u_char *sta_address){
     int i;
@@ -370,45 +400,3 @@ int get_index(u_char *sta_address){
     return -1;
 }
 
-void generate_ptk(sta_index){
-    //PRF-X(PMK, “Pairwise key expansion”, Min(AA,SPA) || Max(AA,SPA) || Min(ANonce,SNonce) || Max(ANonce,SNonce))
-    
-    u_char * AA = sta_data[sta_index]->authenticator;
-    u_char * SPA = sta_data[sta_index]->supplicant;
-    u_char * ANonce = sta_data[sta_index]->ANonce;
-    u_char * SNonce = sta_data[sta_index]->SNonce;
-    
-    //data = Min(AA,SPA) || Max(AA,SPA) || Min(ANonce,SNonce) || Max(ANonce,SNonce)
-    int data_len = 76; //6+6+32+32
-    u_char *data = (u_char *) malloc(data_len * sizeof(u_char));
-    if(memcmp(SPA,AA, 6) > 0){
-        memcpy(data, AA, 6);
-        memcpy(data+6, SPA, 6);
-    }else{
-        memcpy(data, SPA, 6);
-        memcpy(data+6, AA, 6);
-    }
-    
-    if(memcmp(ANonce,SNonce, 32) > 0){
-        memcpy(data+12, SNonce, 32);
-        memcpy(data+12+32, ANonce, 32);
-    }else{
-        memcpy(data+12, ANonce, 32);
-        memcpy(data+12+32, SNonce, 32);
-    }
-    
-    int key_len = 32; //??
-    
-    u_char *prefix = "Pairwise key expansion";
-    int prefix_len = strlen(prefix);
-    
-    int len = 80;
-    u_char *output = (u_char *)malloc(len);
-    
-    PRF(PSK, key_len, prefix, prefix_len, data, data_len, output, len);
-    print_exString(output, 64);
-    
-    memcpy(sta_data[sta_index]->PTK, output, 32 * sizeof(u_char));
-    printf("\n");
-    
-}

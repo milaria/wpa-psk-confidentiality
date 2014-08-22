@@ -1,2 +1,9 @@
 
 *.pdf
+
+ns_project
+
+*.o
+
+NetSec.xcodeproj/*
+ipod_casa
