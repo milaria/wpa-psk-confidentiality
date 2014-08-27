@@ -31,7 +31,6 @@
 		6342E52C165A905C00BD59BB /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		6342E52E165A905C00BD59BB /* NetSec.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = NetSec.1; sourceTree = "<group>"; };
 		63A9B01816D3639F00C53983 /* PRF.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PRF.h; sourceTree = "<group>"; };
-		63B60AD516CE47260073288C /* sta_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sta_data.h; sourceTree = "<group>"; };
 		63D8386419A79B2600D5EC45 /* enc_functions.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = enc_functions.c; sourceTree = "<group>"; };
 		63D8386619A79B4200D5EC45 /* enc_functions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = enc_functions.h; sourceTree = "<group>"; };
 		63D8386719A79B9400D5EC45 /* util_functions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = util_functions.h; sourceTree = "<group>"; };
@@ -74,7 +73,6 @@
 				63D8386419A79B2600D5EC45 /* enc_functions.c */,
 				63D8386619A79B4200D5EC45 /* enc_functions.h */,
 				63A9B01816D3639F00C53983 /* PRF.h */,
-				63B60AD516CE47260073288C /* sta_data.h */,
 				6342E52E165A905C00BD59BB /* NetSec.1 */,
 			);
 			path = NetSec;

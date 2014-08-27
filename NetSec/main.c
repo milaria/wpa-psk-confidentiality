@@ -48,9 +48,9 @@ extern u_char * PSK;
 
 void got_packet_radiotap(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
 void open_ieee_packet(const u_char *ieee_packet);
-void open_llc_packet(const u_char *llc_packet,u_char *address_1,u_char *address_2,u_char *address_3);
-void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u_char *address_3);
-void message_1(const u_char *eapol_key,u_char *address_1,u_char *address_2,u_char *address_3);
+void open_llc_packet(const u_char *llc_packet,u_char *address_1,u_char *address_2,u_char *address_3,int current_i);
+void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u_char *address_3,int current_i);
+void message_1(const u_char *eapol_key,u_char *address_1,u_char *address_2,u_char *address_3,int current_i);
 char* address_format(char address_1[6]);
 int new_sta(u_char *address_1);
 eapolKeyType classify_eapol_key(int secure, int key_MIC, int key_ack, int install, int key_type);
@@ -212,12 +212,32 @@ void open_ieee_packet(const u_char *ieee_packet){
     //printf("flags: %2x\n",flags);
     //printf("protected %d\n",protected);
     
+    //Note that Address 1 always holds the receiver address of the intended receiver (or, in the case of multicast frames, receivers), and that Address 2 always holds the address of the STA that is transmitting the frame.
     u_char address_1[6];
     memcpy(address_1, ieee_packet+4, 6*sizeof(u_char));
     u_char address_2[6];
     memcpy(address_2, ieee_packet+4+6, 6*sizeof(u_char));
     u_char address_3[6];
     memcpy(address_3, ieee_packet+4+6+6, 6*sizeof(u_char));
+    
+    u_char * bssid, * stmac;
+    
+    if (to_ds == 0 && from_ds == 1) {
+        stmac = address_2;
+        bssid = address_1;
+    }else{
+        stmac = address_1;
+        bssid = address_2;
+    }
+    
+    int current_i = get_index(stmac);
+    if(current_i == -1 && num_sta<MAX_NUM_STA){ //new station
+        num_sta++;
+        current_i = num_sta - 1;
+        sta_data[current_i] = (Phandshake_data)malloc(sizeof(Handshake_data));
+        memcpy(sta_data[current_i]->supplicant, stmac, 6 * sizeof(u_char));
+        sta_data[current_i]->state = 0;
+    }
     
     //printf("\%2x:\%2x:\%2x:\%2x:\%2x:\%2x\n",address_1[0],address_1[1],address_1[2],address_1[3],address_1[4],address_1[5]);
     
@@ -236,9 +256,42 @@ void open_ieee_packet(const u_char *ieee_packet){
             //Address 1 always holds the receiver address of the intended receiver (or, in the case of multicast frames, receivers)
             //Address 2 always holds the address of the STA that is transmitting the frame.
             const u_char * llc_packet = ieee_packet+mac_frame_header_length;
-            open_llc_packet(llc_packet,address_1,address_2,address_3);
+            open_llc_packet(llc_packet,address_1,address_2,address_3,current_i);
         }
-        else{
+        else{//protected... trying to decrypt
+            /*
+             The ExtIV bit in the Key ID octet indicates the presence or absence of an extended IV. If the ExtIV bit is 0, only the nonextended IV is transferred. If the ExtIV bit is 1, an extended IV of 4 octets follows the original IV. For TKIP the ExtIV bit shall be set, and the Extended IV field shall be supplied. The ExtIV bit shall be 0 for WEP frames.
+             */
+            if (sta_data[current_i]->state == 0) { //key not valid
+                return;
+            }
+            
+            const u_char * TKIP_par = ieee_packet + mac_frame_header_length;
+            
+            u_short IV16 = 256 * TKIP_par[0] + TKIP_par[2]; //TSC1*256 + TSC0
+            u_long IV32 = TKIP_par[4] + 256 * (TKIP_par[5] + 256 * (TKIP_par[6] + 256 * TKIP_par[7])); //TSC2 TSC3 TSC4 TSC5
+            
+            u_short P1K[80];
+            u_char RC4KEY[16];
+            u_char * TA = address_2;
+            
+            Phase1(P1K, sta_data[current_i]->PTK+32, TA, IV32); // sta_data[current_i]->PTK+32 = TK
+            Phase2(RC4KEY, sta_data[current_i]->PTK+32, P1K, IV16);
+            /*
+            int cleartext_len = packetHeader.caplen-packetPos-8;
+            u_char *cleartext = rc4(pacchetto80211 + packetPos + 8,lunghezzaCleartext, RC4KEY, 16);
+            
+            u_int crcCLEAR = crc32buf(cleartext, lunghezzaCleartext-4); // 12: 4 (CRC) + IV + EXTIV
+            u_int ICV = cleartext[lunghezzaCleartext-4]+256*(cleartext[lunghezzaCleartext-3]
+                                                             +256*(cleartext[lunghezzaCleartext-2]+256*cleartext[lunghezzaCleartext-1]));
+            if(crcCLEAR!=ICV){
+                printf("ICV FAILURE %d!\n",statistiche.letti);
+                // se ICV non e' esatto, la decifratura non e' andata bene o il pacchetto e' errato
+                free(cleartext);
+                continue;
+            }
+             */
+
             
         }
     }
@@ -246,7 +299,7 @@ void open_ieee_packet(const u_char *ieee_packet){
     return;
 }
 
-void open_llc_packet(const u_char *llc_packet,u_char *address_1,u_char *address_2,u_char *address_3){
+void open_llc_packet(const u_char *llc_packet,u_char *address_1,u_char *address_2,u_char *address_3, int current_i){
     //int individual = (int) ((llc_packet[0] & 0x80) >> 7);
     //int command = (int) ((llc_packet[0] & 0x80) >> 7);
     //For I/G = 0 the address is individual and for I/G=1 it's a group address.
@@ -257,12 +310,12 @@ void open_llc_packet(const u_char *llc_packet,u_char *address_1,u_char *address_
     if((type[0]==0x88) && (type[1]==0x8e)){//EAPOL!
         //printf("EAPOL");
         int llc_header_length=8;
-        open_eapol(llc_packet+llc_header_length,address_1,address_2,address_3);
+        open_eapol(llc_packet+llc_header_length,address_1,address_2,address_3, current_i);
         
     }
 }
 
-void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u_char *address_3){
+void open_eapol(const u_char *eapol_packet,u_char *address_1,u_char *address_2,u_char *address_3, int current_i){
     int packet_type=(int)(u_char)eapol_packet[1];
     //printf("%d\n",packet_type);//if packet_type==3 EAPOL key
     

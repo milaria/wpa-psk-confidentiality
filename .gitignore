@@ -23,3 +23,5 @@ NetSec/wpa_Induction.pcap
 NetSec/main
 
 NetSec.xcodeproj/project.xcworkspace/xcuserdata/ilariamartinelli.xcuserdatad/UserInterfaceState.xcuserstate
+
+*.pbxproj
