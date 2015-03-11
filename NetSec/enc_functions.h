@@ -26,7 +26,7 @@ typedef struct handshake_data{
     u_char ANonce[32]; //32byte
     u_char SNonce[32]; //32byte
     u_char IV[16];
-    u_char PTK[32];
+    u_char PTK[64];
     int state;//1 if finished & valid
 }Handshake_data, * Phandshake_data;
 

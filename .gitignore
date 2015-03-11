@@ -25,3 +25,9 @@ NetSec/main
 NetSec.xcodeproj/project.xcworkspace/xcuserdata/ilariamartinelli.xcuserdatad/UserInterfaceState.xcuserstate
 
 *.pbxproj
+
+*.out
+
+*.txt
+
+*.pcapng

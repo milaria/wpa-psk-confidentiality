@@ -141,7 +141,7 @@ void generate_ptk(int sta_index){
     PRF(PSK, key_len, prefix, prefix_len, data, data_len, output, len);//FORSE len = 64...
     print_exString(output, 64);
     
-    memcpy(sta_data[sta_index]->PTK, output, 32 * sizeof(u_char));
+    memcpy(sta_data[sta_index]->PTK, output, 64 * sizeof(u_char));
     printf("\n");
     
 }
